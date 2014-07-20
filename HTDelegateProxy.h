@@ -31,4 +31,6 @@
 - (void)removeDelegate:(id)delegate;
 - (void)removeAllDelegates;
 
+- (NSArray *)delegates;
+
 @end
