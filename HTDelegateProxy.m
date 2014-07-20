@@ -17,33 +17,63 @@
 
 #import "HTDelegateProxy.h"
 
+@interface HTDelegateProxy ()
+
+@property (nonatomic, strong) NSMutableArray *delegates;
+
+@end
+
 @implementation HTDelegateProxy
 
 @synthesize delegates = _delegates;
 
 - (id)initWithDelegates:(NSArray *)delegates
 {
-    [self setDelegates:delegates];
+    self = [self init];
+    
+    if (self)
+    {
+        [self addDelegates:delegates];
+    }
+    
     return self;
 }
 
 - (id)init
 {
+    [self configureDelegateProxy];
+    
     return self;
+}
+
+- (void)configureDelegateProxy
+{
+    _delegates = [[NSMutableArray alloc] init];
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)selector
 {
-    NSMethodSignature *signature;
+    NSMethodSignature *signature = nil;
+    
     for (NSValue *nonRetainedValue in _delegates)
     {
         id delegate = [nonRetainedValue nonretainedObjectValue];
+        
         signature = [[delegate class] instanceMethodSignatureForSelector:selector];
+        
         if (signature)
         {
             break;
         }
     }
+    
+    if (signature == nil)
+    {
+        signature = [[self class] instanceMethodSignatureForSelector:@selector(doNothing:)];
+        
+        [self logNoMethodSignatureFoundForSelector:selector];
+    }
+    
 	return signature;
 }
 
@@ -84,26 +114,52 @@
     return NO;
 }
 
+- (void)doNothing:(SEL)selector
+{
+    
+}
+
+- (void)logNoMethodSignatureFoundForSelector:(SEL)selector
+{
+    NSLog(@"[HTDelegateProxy] No method signature found for selector %@", NSStringFromSelector(selector));
+}
+
 #pragma mark - Properties
 
 - (NSArray *)delegates
 {
     NSMutableArray *delegatesBuilder = [NSMutableArray arrayWithCapacity:[_delegates count]];
+    
     for (NSValue *delegateValue in _delegates)
     {
         [delegatesBuilder addObject:[delegateValue nonretainedObjectValue]];
     }
+    
     return [NSArray arrayWithArray:delegatesBuilder];
 }
 
-- (void)setDelegates:(NSArray *)delegates
+- (void)addDelegate:(id)delegate
 {
-    NSMutableArray *delegatesUnretainedBuilder = [NSMutableArray arrayWithCapacity:[delegates count]];
+    [_delegates addObject:[NSValue valueWithNonretainedObject:delegate]];
+}
+
+- (void)addDelegates:(NSArray *)delegates
+{
     for (id delegate in delegates)
     {
-        [delegatesUnretainedBuilder addObject:[NSValue valueWithNonretainedObject:delegate]];
+        [self addDelegate:delegate];
     }
-    _delegates = [NSArray arrayWithArray:delegatesUnretainedBuilder];
+}
+
+- (void)removeDelegate:(id)delegate
+{
+    [_delegates removeObject:[NSValue valueWithNonretainedObject:delegate]];
+}
+
+- (void)removeAllDelegates
+{
+    [_delegates removeAllObjects];
 }
 
 @end
+
